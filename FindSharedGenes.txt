@@ -1,0 +1,129 @@
+ * Find shared genes between selected strains in an Excel worksheet
+ *
+ * @author     José Luis Ramírez
+ * @copyright  2016 José Luis Ramírez
+ * @author     José Luis Ramírez
+ * @copyright  2015 José Luis Ramírez
+ * @license    http://opensource.org/licenses/gpl-license.php GNU Public License
+ * @version    1.0
+ */
+ 
+ Function GetCellRow(Address As Variant) As String
+    Dim vArr
+    vArr = Split(Address, "$")
+    GetCellRow = vArr(1)
+End Function
+
+Function GetCellCol(Address As Variant) As String
+    Dim vArr
+    vArr = Split(Address, "$")
+    GetCellCol = vArr(0)
+End Function
+
+Function InArray(ArrayCheck() As String, Data As String) As Boolean
+    exists = False
+    For i = LBound(ArrayCheck) To UBound(ArrayCheck)
+        If ArrayCheck(i) = Data Then
+            exists = True
+            GoTo salir
+        End If
+    Next i
+salir:
+    InArray = exists
+End Function
+
+Function BuscaColumnaResult() As Integer
+    Col = 1
+    While Worksheets("RESULTS").Cells(1, Col) <> ""
+        Col = Col + 1
+    Wend
+    
+    If Col > 1 Then
+        Col = Col
+    End If
+    
+    BuscaColumnaResult = Col
+    
+End Function
+
+Sub FindSharedGenes()
+    Dim cell As Range
+    Dim count As Integer
+    Dim vArr
+    Dim cepasRows() As String
+    
+    count = 0
+    cantSelGene = 0
+    Dim genesUnicos
+    'WE FIRST SEE IF ONLY CELLS FROM THE FIRST COLUMN ARE SELECTED
+    For Each cell In Selection
+        Col_Letter = GetCellCol(cell.Address(True, False))
+        Row_Num = GetCellRow(cell.Address(True, False))
+        If Col_Letter <> "A" Then
+            MsgBox "Only select cells from the first column (You selected the cell: " & cell.Address(True, False)
+            GoTo salir
+        Else
+            ReDim Preserve cepasRows(count)
+            cepasRows(count) = Row_Num
+            count = count + 1
+        End If
+    Next cell
+    
+    MsgBox "You selected " & count & " cells from the first column."
+    
+    CountGenes = Worksheets("DATA").Cells(1, 2)
+    CountStrains = Worksheets("DATA").Cells(2, 2)
+    StartGenesCol = 3
+    StartStrainsRow = 6
+    
+    ColumnaResult = BuscaColumnaResult
+    Worksheets("RESULTS").Cells(1, ColumnaResult) = "Selected strains"
+    Worksheets("RESULTS").Cells(1, ColumnaResult + 1) = "Genes found"
+    Worksheets("RESULTS").Cells(1, ColumnaResult + 2) = "D1"
+    Worksheets("RESULTS").Cells(1, ColumnaResult + 3) = "D2"
+    Worksheets("RESULTS").Cells(1, ColumnaResult + 4) = "D3"
+    Worksheets("RESULTS").Cells(1, ColumnaResult + 5) = "D4"
+    
+    i = 2
+    'COPY THE STRAIN NAMES INTO RESULTS SHEET
+    For Each cell In Selection
+        Worksheets("RESULTS").Cells(i, ColumnaResult) = cell
+        i = i + 1
+    Next cell
+    
+    'WE GO OVER EVERY GENE
+    For geneCol = StartGenesCol To (CountGenes + StartGenesCol)
+        selGene = True
+        For s = LBound(cepasRows) To UBound(cepasRows)
+            If Cells(cepasRows(s), geneCol) <= 0 Then
+                selGene = False
+                GoTo NextGene
+            End If
+        Next s
+        
+        
+        'WE GO OVER EVERY STRAIN
+        For strainRow = StartStrainsRow To (CountStrains + StartStrinsRow)
+            'VERIFY THAT ONLY THE CHOSEN STRAINS HAVE 1
+            If (Not InArray(cepasRows, "" & strainRow)) And (Cells(strainRow, geneCol) <> 0) Then
+                selGene = False
+                GoTo NextGene
+            End If
+        Next strainRow
+        
+        'IF THE GENE IS CHOSSEN
+        If selGene Then
+            cantSelGene = cantSelGene + 1
+            Worksheets("RESULTS").Cells(cantSelGene + 1, ColumnaResult + 1) = Cells(1, geneCol)
+            Worksheets("RESULTS").Cells(cantSelGene + 1, ColumnaResult + 2) = Cells(2, geneCol)
+            Worksheets("RESULTS").Cells(cantSelGene + 1, ColumnaResult + 3) = Cells(3, geneCol)
+            Worksheets("RESULTS").Cells(cantSelGene + 1, ColumnaResult + 4) = Cells(4, geneCol)
+            Worksheets("RESULTS").Cells(cantSelGene + 1, ColumnaResult + 5) = Cells(5, geneCol)
+        End If
+NextGene:
+    Next geneCol
+    
+    MsgBox "Finished search. " & cantSelGene & " genes were found that contained the " & count & " strains."
+salir:
+End Sub
+
